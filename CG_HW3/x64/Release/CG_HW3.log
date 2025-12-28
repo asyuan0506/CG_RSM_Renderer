@@ -1,0 +1,11 @@
+﻿  CG_HW3.cpp
+D:\CPlusPlus\College\Junior\cg\CG_HW3\Library\OpenCV\include\opencv2\calib3d.hpp(1,1): warning C4819: 檔案含有無法在目前字碼頁 (950) 中表示的字元。請以 Unicode 格式儲存檔案以防止資料遺失
+  (編譯來源檔案 'CG_HW3.cpp')
+  
+  正在產生程式碼
+  0 of 480 functions ( 0.0%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  已完成程式碼產生
+  CG_HW3.vcxproj -> D:\CPlusPlus\College\Junior\cg\CG_HW3\x64\Release\CG_HW3.exe
+  'pwsh.exe' 不是內部或外部命令、可執行的程式或批次檔。
