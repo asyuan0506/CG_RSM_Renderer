@@ -41,5 +41,8 @@
 *.dwo
 
 .vs/*
+001_Reflective shadow map/*
 TestTextures_HW3/*
 TestModels_HW3/*
+*.pdf
+*.zip

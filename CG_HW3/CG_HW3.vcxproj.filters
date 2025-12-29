@@ -42,6 +42,12 @@
     <ClCompile Include="g_buffer.cpp">
       <Filter>來源檔案</Filter>
     </ClCompile>
+    <ClCompile Include="screen_quad.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
+    <ClCompile Include="rsm_buffer.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h">
@@ -74,6 +80,12 @@
     <ClInclude Include="g_buffer.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
+    <ClInclude Include="screen_quad.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="rsm_buffer.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\fixed_color.fs">
@@ -94,12 +106,6 @@
     <None Include="shaders\skybox.vs">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\deferred_light_box.fs">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="shaders\deferred_light_box.vs">
-      <Filter>shaders</Filter>
-    </None>
     <None Include="shaders\deferred_shading.fs">
       <Filter>shaders</Filter>
     </None>
@@ -110,6 +116,24 @@
       <Filter>shaders</Filter>
     </None>
     <None Include="shaders\g_buffer.vs">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\screen_quad.fs">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\screen_quad.vs">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\rsm_buffer.fs">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\rsm_buffer.vs">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\rsm_shading.fs">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\rsm_shading.vs">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

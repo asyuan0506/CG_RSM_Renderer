@@ -228,4 +228,88 @@ protected:
 private:	
 };
 
+class RSMBufferShaderProg : public ShaderProg
+{
+public:
+	// RSMBufferShaderProg Public Methods.
+	RSMBufferShaderProg();
+	~RSMBufferShaderProg();
+	GLint GetLocM() const { return locM_; }
+	GLint GetLocV() const { return locV_; }
+	GLint GetLocLightVP() const { return locLightVP_; }
+	GLint GetLocLightIntensity() const { return locLightIntensity_; }
+	GLint GetLocNM() const { return locNM_; }
+	GLint GetLocTexDiffuse() const { return locTexDiffuse_; }
+	GLint GetLocKs() const { return locKs_; }
+protected:
+	// RSMBufferShaderProg Protected Methods.
+	void GetUniformVariableLocation();
+private:
+	// RSMBufferShaderProg Private Data.
+	GLint locM_;
+	GLint locV_;
+	GLint locLightVP_;
+	GLint locLightIntensity_;
+	GLint locNM_;
+	GLint locTexDiffuse_;
+	GLint locKs_;
+
+};
+
+class RSMShadingShaderProg : public ShaderProg
+{
+public:
+	// RSMShadingShaderProg Public Methods.
+	RSMShadingShaderProg();
+	~RSMShadingShaderProg();
+	GLint GetLocV() const { return locV_; }
+	GLint GetLocP() const { return locP_; }
+	GLint GetLocAlbedoTexture() const { return locAlbedoTexture_; }
+	GLint GetLocNormalTexture() const { return locNormalTexture_; }
+	GLint GetLocPositionTexture() const { return locPositionTexture_; }
+	GLint GetLocRSMFluxTexture() const { return locRSMFluxTexture_; }
+	GLint GetLocRSMNormalTexture() const { return locRSMNormalTexture_; }
+	GLint GetLocRSMPositionTexture() const { return locRSMPositionTexture_; }
+	GLint GetLocLightVPMatrixMulInverseCameraViewMatrix() const { return locLightVPMatrixMulInverseCameraViewMatrix_; }
+	GLint GetLocMaxSampleRadius() const { return locMaxSampleRadius_; }
+	GLint GetLocRSMSize() const { return locRSMSize_; }
+	GLint GetLocVPLNum() const { return locVPLNum_; }
+
+	GLint GetLocLightNum() const { return locLightNum_; }
+	GLint GetLocLightType() const { return locLightType_; }
+	GLint GetLocLightIntensity() const { return locLightIntensity_; }
+	GLint GetLocLightPosInViewSpace() const { return locLightPosInViewSpace_; }
+	GLint GetLocLightDirInViewSpace() const { return locLightDirInViewSpace_; }
+	GLint GetLocSpotCutoff() const { return locSpotCutoff_; }
+	GLint GetLocSpotTotalWidth() const { return locSpotTotalWidth_; }
+	
+protected:
+	// RSMShadingShaderProg Protected Methods.
+	void GetUniformVariableLocation();
+private:
+	// RSMShadingShaderProg Private Data.
+	GLint locV_;
+	GLint locP_;
+	GLint locAlbedoTexture_;
+	GLint locNormalTexture_;
+	GLint locPositionTexture_;
+	GLint locRSMFluxTexture_;
+	GLint locRSMNormalTexture_;
+	GLint locRSMPositionTexture_;
+	GLint locLightVPMatrixMulInverseCameraViewMatrix_;
+	GLint locMaxSampleRadius_;
+	GLint locRSMSize_;
+	GLint locVPLNum_;
+
+	GLint locLightNum_;
+	GLint locLightType_;
+	GLint locLightIntensity_;
+	GLint locLightPosInViewSpace_;
+	GLint locLightDirInViewSpace_;
+	GLint locSpotCutoff_;
+	GLint locSpotTotalWidth_;
+};
+
 #endif
+
+

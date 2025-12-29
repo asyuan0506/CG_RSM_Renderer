@@ -52,6 +52,7 @@ G_Buffer::~G_Buffer()
 	glDeleteTextures(1, &gPosition);
 	glDeleteTextures(1, &gNormal);
 	glDeleteTextures(1, &gAlbedoSpec);
+	glDeleteRenderbuffers(1, &rboDepth);
 }
 
 void G_Buffer::Draw() {

@@ -1,6 +1,7 @@
-﻿  CG_RenderCompetition.cpp
+﻿C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\Microsoft.CppBuild.targets(538,5): warning MSB8028: 中繼目錄 (x64\Debug\) 包含從其他專案 (CG_HW3.vcxproj) 共用的檔案。這可能導致錯誤的清除和重建行為。
+  CG_RenderCompetition.cpp
 D:\CPlusPlus\College\Junior\cg\CG_Render_Competition\Library\OpenCV\include\opencv2\calib3d.hpp(1,1): warning C4819: 檔案含有無法在目前字碼頁 (950) 中表示的字元。請以 Unicode 格式儲存檔案以防止資料遺失
   (編譯來源檔案 'CG_RenderCompetition.cpp')
   
-  CG_HW3.vcxproj -> D:\CPlusPlus\College\Junior\cg\CG_Render_Competition\x64\Debug\CG_HW3.exe
+  CG_HW3.vcxproj -> D:\CPlusPlus\College\Junior\cg\CG_Render_Competition\x64\Debug\CG_RenderCompetition.exe
   'pwsh.exe' 不是內部或外部命令、可執行的程式或批次檔。

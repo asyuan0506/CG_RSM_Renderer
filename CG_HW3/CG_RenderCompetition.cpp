@@ -9,6 +9,9 @@
 
 // Deferred shading
 #include "g_buffer.h"
+#include "screen_quad.h"
+// RSM
+#include "rsm_buffer.h"
 
 // Maybe use a base class for all objects, so that they could transform in a unified way.
 
@@ -54,7 +57,11 @@ Skybox* skybox = nullptr;
 G_Buffer* g_buffer = nullptr;
 GBufferShaderProg* g_buffer_shader = nullptr;
 DeferredShadingShaderProg* deferred_shading_shader = nullptr;
-LightPassShaderProg* light_pass_shader = nullptr;
+ScreenQuad screen_quad;
+// RSM
+RSMBuffer* rsm_buffer = nullptr;
+RSMBufferShaderProg* rsm_buffer_shader = nullptr;
+RSMShadingShaderProg* rsm_shading_shader = nullptr;
 
 // ScenePointLight (for visualization of a point light).
 struct ScenePointLight
@@ -74,7 +81,6 @@ ScenePointLight spotLightObj;
 // Function prototypes.
 int FindFreeModelID();
 void ReleaseResources();
-void RenderQuad();
 // Callback functions.
 void RenderSceneCB();
 void ReshapeCB(int, int);
@@ -308,6 +314,10 @@ void DeferredRenderSceneCB() {
             spotLightTotalWidths[i] = spot_light_list[i]->GetTotalWidth();
         }
     }
+	// -------------------------------------------------------------------------------------------
+	// Camera matrices.
+    glm::mat4x4 viewMatrix = camera->GetViewMatrix();
+    glm::mat4x4 projectionMatrix = camera->GetProjMatrix();
     // 1. geometry pass: render scene's geometry/color data into gbuffer
     // -----------------------------------------------------------------
     glBindFramebuffer(GL_FRAMEBUFFER, g_buffer->GetGBuffer());
@@ -315,19 +325,19 @@ void DeferredRenderSceneCB() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     g_buffer_shader->Bind();
 
+    glUniformMatrix4fv(g_buffer_shader->GetLocV(), 1, GL_FALSE, glm::value_ptr(viewMatrix));
+    glUniformMatrix4fv(g_buffer_shader->GetLocP(), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
     TriangleMesh* pMesh;
     for (int i = 0; i < model_list.size(); i++) {
         if (model_list[i] != nullptr) {
             pMesh = model_list[i];
             glm::mat4x4 worldMatrix = pMesh->GetWorldMatrix();
-            glm::mat4x4 viewMatrix = camera->GetViewMatrix();
-			glm::mat4x4 projectionMatrix = camera->GetProjMatrix();
+            
             glm::mat4x4 normalMatrix = glm::transpose(glm::inverse(viewMatrix * worldMatrix));
             glm::mat4x4 MVP = camera->GetProjMatrix() * viewMatrix * worldMatrix;
 
             glUniformMatrix4fv(g_buffer_shader->GetLocM(), 1, GL_FALSE, glm::value_ptr(worldMatrix));
-            glUniformMatrix4fv(g_buffer_shader->GetLocV(), 1, GL_FALSE, glm::value_ptr(viewMatrix));
-            glUniformMatrix4fv(g_buffer_shader->GetLocP(), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
             glUniformMatrix4fv(g_buffer_shader->GetLocNM(), 1, GL_FALSE, glm::value_ptr(normalMatrix));
 			glUniformMatrix4fv(g_buffer_shader->GetLocMVP(), 1, GL_FALSE, glm::value_ptr(MVP));
             // -------------------------------------------------------
@@ -341,10 +351,10 @@ void DeferredRenderSceneCB() {
         }
     }
 	g_buffer_shader->UnBind();
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     // 2. lighting pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content.
     // -----------------------------------------------------------------------------------------------------------------------
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     deferred_shading_shader->Bind();
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, g_buffer->GetGPosition());
@@ -369,10 +379,9 @@ void DeferredRenderSceneCB() {
     glUniform1fv(deferred_shading_shader->GetLocSpotLightCutoffStart(), SPOT_LIGHT_NUM, spotLightCutoffStarts);
     glUniform1fv(deferred_shading_shader->GetLocSpotLightTotalWidth(), SPOT_LIGHT_NUM, spotLightTotalWidths);
     
-    glm::mat4x4 viewMatrix = camera->GetViewMatrix();
 	glUniformMatrix4fv(deferred_shading_shader->GetLocV(), 1, GL_FALSE, glm::value_ptr(viewMatrix));
     // finally render quad
-    RenderQuad();
+    screen_quad.Render();
     deferred_shading_shader->UnBind();
     // -------------------------------------------------------
     // 2.5. copy content of geometry's depth buffer to default framebuffer's depth buffer
@@ -385,10 +394,7 @@ void DeferredRenderSceneCB() {
     glBlitFramebuffer(0, 0, screenWidth, screenHeight, 0, 0, screenWidth, screenHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	// -------------------------------------------------------------------------------------------
-    // 3. render lights on top of scene
-	// -----------------------------
-	//light_pass_shader->Bind();
-  
+
     // Render skybox. ----------------------------------------------------------------------------
     if (skybox != nullptr && ui_manager.GetUseSkybox()) {
         // -------------------------------------------------------
@@ -430,37 +436,298 @@ void DeferredRenderSceneCB() {
     glutSwapBuffers();
 }
 
-// renderQuad() renders a 1x1 XY quad in NDC
-// -----------------------------------------
-unsigned int quadVAO = 0;
-unsigned int quadVBO;
-void RenderQuad()
-{
-    if (quadVAO == 0)
-    {
-        float quadVertices[] = {
-            // positions        // texture Coords
-            -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
-            -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-             1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
-             1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
-        };
-        // setup plane VAO
-        glGenVertexArrays(1, &quadVAO);
-        glGenBuffers(1, &quadVBO);
-        glBindVertexArray(quadVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+void RenderWithRSM() {
+    if (glutGetWindow() != ui_manager.GetRenderWindow()) // avoid GLUI window from flashing
+        return;
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // Lights setup. -------------------------------------------------------------------------------
+    glm::vec3 spotLightPositions[SPOT_LIGHT_NUM];
+    glm::vec3 spotLightDirections[SPOT_LIGHT_NUM];
+    glm::vec3 spotLightIntensities[SPOT_LIGHT_NUM];
+    float spotLightCutoffStarts[SPOT_LIGHT_NUM];
+    float spotLightTotalWidths[SPOT_LIGHT_NUM];
+    for (int i = 0; i < SPOT_LIGHT_NUM; i++) {
+        if (spot_light_list[i] != nullptr) {
+            spotLightPositions[i] = spot_light_list[i]->GetPosition();
+            spotLightDirections[i] = spot_light_list[i]->GetDirection();
+            spotLightIntensities[i] = spot_light_list[i]->GetIntensity();
+            spotLightCutoffStarts[i] = spot_light_list[i]->GetCutoffStart();
+            spotLightTotalWidths[i] = spot_light_list[i]->GetTotalWidth();
+        }
     }
-    glBindVertexArray(quadVAO);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    glBindVertexArray(0);
+    // -------------------------------------------------------------------------------------------
+    // Camera matrices.
+    glm::mat4x4 viewMatrix = camera->GetViewMatrix();
+    glm::mat4x4 projectionMatrix = camera->GetProjMatrix();
+    // 1. geometry pass: render scene's geometry/color data into gbuffer
+    // -----------------------------------------------------------------
+    glBindFramebuffer(GL_FRAMEBUFFER, g_buffer->GetGBuffer());
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    g_buffer_shader->Bind();
+
+    glUniformMatrix4fv(g_buffer_shader->GetLocV(), 1, GL_FALSE, glm::value_ptr(viewMatrix));
+    glUniformMatrix4fv(g_buffer_shader->GetLocP(), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+    TriangleMesh* pMesh;
+    for (int i = 0; i < model_list.size(); i++) {
+        if (model_list[i] != nullptr) {
+            pMesh = model_list[i];
+            glm::mat4x4 worldMatrix = pMesh->GetWorldMatrix();
+
+            glm::mat4x4 normalMatrix = glm::transpose(glm::inverse(viewMatrix * worldMatrix));
+            glm::mat4x4 MVP = camera->GetProjMatrix() * viewMatrix * worldMatrix;
+
+            glUniformMatrix4fv(g_buffer_shader->GetLocM(), 1, GL_FALSE, glm::value_ptr(worldMatrix));
+            glUniformMatrix4fv(g_buffer_shader->GetLocNM(), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+            glUniformMatrix4fv(g_buffer_shader->GetLocMVP(), 1, GL_FALSE, glm::value_ptr(MVP));
+            // -------------------------------------------------------
+            std::vector<SubMesh> sub_meshes = pMesh->GetSubMeshes(); // Return by value.
+            for (SubMesh sub_mesh : sub_meshes) {
+                sub_mesh.material->GetMapKd()->Bind(GL_TEXTURE0);
+                glUniform1i(g_buffer_shader->GetLocTexDiffuse(), 0);
+                glUniform1f(g_buffer_shader->GetLocKs(), sub_mesh.material->GetKs().r);
+                pMesh->Render(sub_mesh);
+            }
+        }
+    }
+    g_buffer_shader->UnBind();
+	// -------------------------------------------------------------------------------------------
+	// 2. Spot Light RSM pass: for each spot light, render scene's geometry/color/depth data into rsm buffer from the light's point of view
+    for (int i = 0; i < SPOT_LIGHT_NUM; i++) {
+        // Similar RSM pass for spot lights can be implemented here.
+        glm::mat4x4 lightViewMatrix = glm::lookAt(spot_light_list[i]->GetPosition(),
+            spot_light_list[i]->GetPosition() + spot_light_list[i]->GetDirection(),
+			glm::vec3(0.0f, 0.0f, 1.0f)); // Maybe need to be changed.
+        glm::mat4x4 lightProjectionMatrix = glm::perspective(glm::radians(spot_light_list[i]->GetTotalWidth()), 1.0f, 0.1f, 1000.0f);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, rsm_buffer->GetRSMBuffer());
+        glViewport(0, 0, rsm_buffer->GetRSMSize(), rsm_buffer->GetRSMSize());
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        rsm_buffer_shader->Bind();
+        glUniformMatrix4fv(rsm_buffer_shader->GetLocLightVP(), 1, GL_FALSE, glm::value_ptr(lightProjectionMatrix * lightViewMatrix));
+        glUniform3fv(rsm_buffer_shader->GetLocLightIntensity(), 1, glm::value_ptr(spot_light_list[i]->GetIntensity()));
+
+        for (int j = 0; j < model_list.size(); j++) {
+            if (model_list[j] != nullptr) {
+                TriangleMesh* pMesh = model_list[j];
+                glm::mat4x4 worldMatrix = pMesh->GetWorldMatrix();
+                glm::mat4x4 normalMatrix = glm::transpose(glm::inverse(viewMatrix * worldMatrix));
+                glUniformMatrix4fv(rsm_buffer_shader->GetLocM(), 1, GL_FALSE, glm::value_ptr(worldMatrix));
+                glUniformMatrix4fv(rsm_buffer_shader->GetLocV(), 1, GL_FALSE, glm::value_ptr(viewMatrix));
+                glUniformMatrix4fv(rsm_buffer_shader->GetLocNM(), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+                // -------------------------------------------------------
+                std::vector<SubMesh> sub_meshes = pMesh->GetSubMeshes(); // Return by value.
+                for (SubMesh sub_mesh : sub_meshes) {
+                    sub_mesh.material->GetMapKd()->Bind(GL_TEXTURE0);
+                    glUniform1i(rsm_buffer_shader->GetLocTexDiffuse(), 0);
+                    glUniform1f(rsm_buffer_shader->GetLocKs(), sub_mesh.material->GetKs().r);
+                    pMesh->Render(sub_mesh);
+                }
+            }
+        }
+        rsm_buffer_shader->UnBind();
+        // ---------------------------------------------------------------------------------------
+        // Pass 2:
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, screenWidth, screenHeight);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE);
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+
+        rsm_shading_shader->Bind();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, g_buffer->GetGPosition());
+        glUniform1i(rsm_shading_shader->GetLocPositionTexture(), 0);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, g_buffer->GetGNormal());
+        glUniform1i(rsm_shading_shader->GetLocNormalTexture(), 1);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, g_buffer->GetGAlbedoSpec());
+        glUniform1i(rsm_shading_shader->GetLocAlbedoTexture(), 2);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, rsm_buffer->GetRSMPos());
+        glUniform1i(rsm_shading_shader->GetLocRSMPositionTexture(), 3);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, rsm_buffer->GetRSMNormal());
+        glUniform1i(rsm_shading_shader->GetLocRSMNormalTexture(), 4);
+        glActiveTexture(GL_TEXTURE5);
+        glBindTexture(GL_TEXTURE_2D, rsm_buffer->GetRSMFlux());
+        glUniform1i(rsm_shading_shader->GetLocRSMFluxTexture(), 5);
+
+        glUniformMatrix4fv(rsm_shading_shader->GetLocP(), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+        glUniformMatrix4fv(rsm_shading_shader->GetLocV(), 1, GL_FALSE, glm::value_ptr(viewMatrix));
+        glm::mat4 lightVP = lightProjectionMatrix * lightViewMatrix;
+        glm::mat4 invCamView = glm::inverse(viewMatrix);
+        glUniformMatrix4fv(rsm_shading_shader->GetLocLightVPMatrixMulInverseCameraViewMatrix(),
+            1, GL_FALSE, glm::value_ptr(lightVP * invCamView));
+        glUniform1f(rsm_shading_shader->GetLocMaxSampleRadius(), 1024.0f);
+        glUniform1i(rsm_shading_shader->GetLocRSMSize(), rsm_buffer->GetRSMSize());
+        glUniform1i(rsm_shading_shader->GetLocVPLNum(), 256);
+        // Light Data
+        glUniform1i(rsm_shading_shader->GetLocLightNum(), SPOT_LIGHT_NUM + 1); // 1 for directional light
+        glUniform1i(rsm_shading_shader->GetLocLightType(), 1); // Spot Light
+		glUniform3fv(rsm_shading_shader->GetLocLightIntensity(), 1, glm::value_ptr(spot_light_list[i]->GetIntensity()));
+        glm::vec4 lightPosWorld = glm::vec4(spot_light_list[i]->GetPosition(), 1.0f);
+        glm::vec3 lightPosView = glm::vec3(viewMatrix * lightPosWorld);
+        glUniform3fv(rsm_shading_shader->GetLocLightPosInViewSpace(), 1, glm::value_ptr(lightPosView));
+        glUniform3fv(rsm_shading_shader->GetLocLightDirInViewSpace(), 1,
+			glm::value_ptr(glm::vec3(viewMatrix* glm::vec4(spot_light_list[i]->GetDirection(), 0.0f))));
+		glUniform1f(rsm_shading_shader->GetLocSpotCutoff(), spot_light_list[i]->GetCutoffStart());
+		glUniform1f(rsm_shading_shader->GetLocSpotTotalWidth(), spot_light_list[i]->GetTotalWidth());
+	
+        // finally render quad
+        screen_quad.Render();
+        rsm_shading_shader->UnBind();
+        glDisable(GL_BLEND);
+        glDepthMask(GL_TRUE);
+        glEnable(GL_DEPTH_TEST);
+	}
+	// -------------------------------------------------------------------------------------------
+    // 3. Directional Light RSM pass: render scene's geometry/color/depth data into rsm buffer from the light's point of view
+    {
+        // Similar RSM pass for directional light can be implemented here.
+		glm::mat4x4 lightViewMatrix = glm::lookAt(-dirLight->GetDirection() * 20.0f, // Look at far away point
+            glm::vec3(0, 0, 0),
+            glm::vec3(0.0f, 1.0f, 0.0f));
+        float near_plane = 0.1f, far_plane = 1000.0f;
+        glm::mat4x4 lightProjectionMatrix = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, rsm_buffer->GetRSMBuffer());
+        glViewport(0, 0, rsm_buffer->GetRSMSize(), rsm_buffer->GetRSMSize());
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        rsm_buffer_shader->Bind();
+        glUniformMatrix4fv(rsm_buffer_shader->GetLocLightVP(), 1, GL_FALSE, glm::value_ptr(lightProjectionMatrix* lightViewMatrix));
+        glUniform3fv(rsm_buffer_shader->GetLocLightIntensity(), 1, glm::value_ptr(dirLight->GetRadiance()));
+
+        for (int j = 0; j < model_list.size(); j++) {
+            if (model_list[j] != nullptr) {
+                TriangleMesh* pMesh = model_list[j];
+                glm::mat4x4 worldMatrix = pMesh->GetWorldMatrix();
+                glm::mat4x4 normalMatrix = glm::transpose(glm::inverse(viewMatrix * worldMatrix));
+                glUniformMatrix4fv(rsm_buffer_shader->GetLocM(), 1, GL_FALSE, glm::value_ptr(worldMatrix));
+                glUniformMatrix4fv(rsm_buffer_shader->GetLocV(), 1, GL_FALSE, glm::value_ptr(viewMatrix));
+                glUniformMatrix4fv(rsm_buffer_shader->GetLocNM(), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+                // -------------------------------------------------------
+                std::vector<SubMesh> sub_meshes = pMesh->GetSubMeshes(); // Return by value.
+                for (SubMesh sub_mesh : sub_meshes) {
+                    sub_mesh.material->GetMapKd()->Bind(GL_TEXTURE0);
+                    glUniform1i(rsm_buffer_shader->GetLocTexDiffuse(), 0);
+                    glUniform1f(rsm_buffer_shader->GetLocKs(), sub_mesh.material->GetKs().r);
+                    pMesh->Render(sub_mesh);
+                }
+            }
+        }
+        rsm_buffer_shader->UnBind();
+        // ---------------------------------------------------------------------------------------
+        // Pass 2:
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, screenWidth, screenHeight);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE);
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+
+        rsm_shading_shader->Bind();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, g_buffer->GetGPosition());
+        glUniform1i(rsm_shading_shader->GetLocPositionTexture(), 0);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, g_buffer->GetGNormal());
+        glUniform1i(rsm_shading_shader->GetLocNormalTexture(), 1);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, g_buffer->GetGAlbedoSpec());
+        glUniform1i(rsm_shading_shader->GetLocAlbedoTexture(), 2);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, rsm_buffer->GetRSMPos());
+        glUniform1i(rsm_shading_shader->GetLocRSMPositionTexture(), 3);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, rsm_buffer->GetRSMNormal());
+        glUniform1i(rsm_shading_shader->GetLocRSMNormalTexture(), 4);
+        glActiveTexture(GL_TEXTURE5);
+        glBindTexture(GL_TEXTURE_2D, rsm_buffer->GetRSMFlux());
+        glUniform1i(rsm_shading_shader->GetLocRSMFluxTexture(), 5);
+
+        glUniformMatrix4fv(rsm_shading_shader->GetLocP(), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+        glUniformMatrix4fv(rsm_shading_shader->GetLocV(), 1, GL_FALSE, glm::value_ptr(viewMatrix));
+        glm::mat4 lightVP = lightProjectionMatrix * lightViewMatrix;
+        glm::mat4 invCamView = glm::inverse(viewMatrix);
+        glUniformMatrix4fv(rsm_shading_shader->GetLocLightVPMatrixMulInverseCameraViewMatrix(),
+            1, GL_FALSE, glm::value_ptr(lightVP * invCamView));
+        glUniform1f(rsm_shading_shader->GetLocMaxSampleRadius(), 1024.0f);
+        glUniform1i(rsm_shading_shader->GetLocRSMSize(), rsm_buffer->GetRSMSize());
+        glUniform1i(rsm_shading_shader->GetLocVPLNum(), 256);
+        // Light Data
+		glUniform1i(rsm_shading_shader->GetLocLightNum(), SPOT_LIGHT_NUM + 1); // 1 for directional light
+        glUniform1i(rsm_shading_shader->GetLocLightType(), 0); // Directional Light
+		glUniform3fv(rsm_shading_shader->GetLocLightIntensity(), 1, glm::value_ptr(dirLightRadiance));
+        glUniform3fv(rsm_shading_shader->GetLocLightDirInViewSpace(), 1,
+			glm::value_ptr(glm::vec3(viewMatrix * glm::vec4(dirLightDirection, 0.0f))));
+
+        // finally render quad
+
+        screen_quad.Render();
+        rsm_shading_shader->UnBind();
+
+	}
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+	// -------------------------------------------------------------------------------------------
+    // Render Quad
+	//screen_quad.Render();
+    
+    // 2.5. copy content of geometry's depth buffer to default framebuffer's depth buffer
+    // ----------------------------------------------------------------------------------
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, g_buffer->GetGBuffer());
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // write to default framebuffer
+    // blit to default framebuffer. Note that this may or may not work as the internal formats of both the FBO and default framebuffer have to match.
+    // the internal formats are implementation defined. This works on all of my systems, but if it doesn't on yours you'll likely have to write to the 		
+    // depth buffer in another shader stage (or somehow see to match the default framebuffer's internal format with the FBO's internal format).
+    glBlitFramebuffer(0, 0, screenWidth, screenHeight, 0, 0, screenWidth, screenHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // -------------------------------------------------------------------------------------------
+    // Render skybox. ----------------------------------------------------------------------------
+    if (skybox != nullptr && ui_manager.GetUseSkybox()) {
+        skybox->Render(camera, skyboxShader);
+    }
+    // -------------------------------------------------------------------------------------------
+    // Visualize the light with fill color. ------------------------------------------------------
+    if (ui_manager.GetShowLight()) {
+        for (PointLight* pointLight : point_light_list) {
+            if (pointLight != nullptr) {
+                glm::mat4x4 T = glm::translate(glm::mat4x4(1.0f), pointLight->GetPosition());
+                pointLightObj.worldMatrix = T;
+                glm::mat4x4 MVP = camera->GetProjMatrix() * camera->GetViewMatrix() * pointLightObj.worldMatrix;
+                fillColorShader->Bind();
+                glUniformMatrix4fv(fillColorShader->GetLocMVP(), 1, GL_FALSE, glm::value_ptr(MVP));
+                glUniform3fv(fillColorShader->GetLocFillColor(), 1, glm::value_ptr(glm::normalize(pointLight->GetIntensity())));
+                // Render the point light.
+                pointLight->Draw();
+                fillColorShader->UnBind();
+            }
+        }
+        for (SpotLight* spotLight : spot_light_list) {
+            if (spotLight != nullptr) {
+                glm::mat4x4 T = glm::translate(glm::mat4x4(1.0f), spotLight->GetPosition());
+                spotLightObj.worldMatrix = T;
+                glm::mat4x4 MVP = camera->GetProjMatrix() * camera->GetViewMatrix() * spotLightObj.worldMatrix;
+                fillColorShader->Bind();
+                glUniformMatrix4fv(fillColorShader->GetLocMVP(), 1, GL_FALSE, glm::value_ptr(MVP));
+                glUniform3fv(fillColorShader->GetLocFillColor(), 1, glm::value_ptr(glm::normalize(spotLight->GetIntensity())));
+                // Render the spot light.
+                spotLight->Draw();
+                fillColorShader->UnBind();
+            }
+        }
+    }
+
+	glutSwapBuffers();
 }
-// ------------------------------------------------------------------------------------------------
 
 void ReshapeCB(int w, int h)
 {
@@ -548,18 +815,20 @@ void CreateLights()
     pointLightObj.light = pointLight;
     pointLightObj.visColor = glm::normalize((pointLightObj.light)->GetIntensity());
     // Create a spot light.
-    SpotLight* spotLight = new SpotLight(spotLightPosition, spotLightIntensity, spotLightDirection, 
+    SpotLight* spotLight = new SpotLight(spotLightPosition, glm::vec3(1.0, 1.0, 1.0), spotLightDirection,
             spotLightCutoffStartInDegree, spotLightTotalWidthInDegree);
     spot_light_list[0] = spotLight;
     spotLightObj.light = spotLight;
     spotLightObj.visColor = glm::normalize((spotLightObj.light)->GetIntensity());
 
-    spotLight = new SpotLight(spotLightPosition, glm::vec3(0.0, 1.0, 0.0), spotLightDirection,
+    spotLight = new SpotLight(spotLightPosition, glm::vec3(1.0, 1.0, 1.0), spotLightDirection,
             spotLightCutoffStartInDegree, spotLightTotalWidthInDegree);
     spot_light_list[1] = spotLight;
-    spotLight = new SpotLight(spotLightPosition, glm::vec3(0.0, 0.0, 1.0), spotLightDirection,
+    spotLight = new SpotLight(spotLightPosition, glm::vec3(0.74218, 0.46875, 0.9), spotLightDirection,
         spotLightCutoffStartInDegree, spotLightTotalWidthInDegree);
     spot_light_list[2] = spotLight;
+    spotLight = new SpotLight(spotLightPosition, glm::vec3(0.74218, 0.46875, 0.9), spotLightDirection,
+        spotLightCutoffStartInDegree, spotLightTotalWidthInDegree);
 }
 
 void CreateCamera()
@@ -604,8 +873,11 @@ void CreateShaderLib()
     deferred_shading_shader = new DeferredShadingShaderProg();
     if (!deferred_shading_shader->LoadFromFiles("shaders/deferred_shading.vs", "shaders/deferred_shading.fs"))
 		exit(1);
-	light_pass_shader = new LightPassShaderProg();
-    if (!light_pass_shader->LoadFromFiles("shaders/deferred_light_box.vs", "shaders/deferred_light_box.fs"))
+    rsm_buffer_shader = new RSMBufferShaderProg();
+    if (!rsm_buffer_shader->LoadFromFiles("shaders/rsm_buffer.vs", "shaders/rsm_buffer.fs"))
+		exit(1);
+    rsm_shading_shader = new RSMShadingShaderProg();
+	if (!rsm_shading_shader->LoadFromFiles("shaders/rsm_shading.vs", "shaders/rsm_shading.fs"))
 		exit(1);
 }
 
@@ -630,7 +902,13 @@ int main(int argc, char** argv)
 
     // Initialization.
     SetupRenderState();
+	// Deferred shading
 	g_buffer = new G_Buffer(screenWidth, screenHeight);
+	screen_quad = ScreenQuad();
+    screen_quad.CreatBuffer();
+    // RSM
+	rsm_buffer = new RSMBuffer(); // Maybe can change resolution
+	// -----------------------------------------------
     CreateLights();
     CreateCamera();
     CreateSkybox("textures/moonlit_golf.jpg");
@@ -638,6 +916,7 @@ int main(int argc, char** argv)
 	ui_manager.SetModelList(&model_list);
 	ui_manager.SetPointLightList(&point_light_list); 
 	ui_manager.SetSpotLightList(&spot_light_list);
+	ui_manager.SetSelectedDirectionalLight(dirLight);
 	ui_manager.SetSkybox(skybox);
     ui_manager.InitGLUI(render_window, screenWidth);
     for(int i = 0; i < POINT_LIGHT_NUM; i++) {
@@ -647,8 +926,8 @@ int main(int argc, char** argv)
         ui_manager.AddOrDeleteLight(false, i, 1); // Spot light
     }
     // Register callback functions.
-    glutDisplayFunc(DeferredRenderSceneCB);
-    glutIdleFunc(DeferredRenderSceneCB);
+    glutDisplayFunc(RenderWithRSM);
+    glutIdleFunc(RenderWithRSM);
     glutReshapeFunc(ReshapeCB);
     glutSpecialFunc(ProcessSpecialKeysCB);
     glutKeyboardFunc(ProcessKeysCB);

@@ -28,6 +28,7 @@ public:
 	void SetSpotLightList(std::vector<SpotLight*>* spot_light_list) { spot_light_list_ = spot_light_list; }
 	void SetSelectedPointLight(PointLight* point_light) { selected_point_light_ = point_light; }
 	void SetSelectedSpotLight(SpotLight* spot_light) { selected_spot_light_ = spot_light; }
+	void SetSelectedDirectionalLight(DirectionalLight* directional_light) { selected_directional_light_ = directional_light; }
 	void SetSkybox(Skybox* skybox) { skybox_ = skybox; }
 
 	void ChooseModelCB(int state);
@@ -69,6 +70,9 @@ private:
 	GLUI_Spinner* spot_light_dir_x_spinner_ = nullptr;
 	GLUI_Spinner* spot_light_dir_y_spinner_ = nullptr;
 	GLUI_Spinner* spot_light_dir_z_spinner_ = nullptr;
+	GLUI_Spinner* directional_light_dir_x_spinner_ = nullptr;
+	GLUI_Spinner* directional_light_dir_y_spinner_ = nullptr;
+	GLUI_Spinner* directional_light_dir_z_spinner_ = nullptr;
 	GLUI_Checkbox* use_skybox_checkbox_ = nullptr;
 	GLUI_Checkbox* rotate_skybox_checkbox_ = nullptr;
 	GLUI_Rotation* rotator_ = nullptr;
@@ -85,6 +89,9 @@ private:
 	float spot_light_dir_x_live_var_;      // Spot Light source direction X component.
 	float spot_light_dir_y_live_var_;      // Spot Light source direction Y component.
 	float spot_light_dir_z_live_var_;      // Spot Light source direction Z component.
+	float directional_light_dir_x_live_var_; // Directional Light source direction X component.
+	float directional_light_dir_y_live_var_; // Directional Light source direction Y component.
+	float directional_light_dir_z_live_var_; // Directional Light source direction Z component.
 	bool show_light_;
 	float rotate_matrix_live_var_[16]; // 4x4 rotation matrix (Column-major order)
 
@@ -94,9 +101,9 @@ private:
 
 	std::vector<PointLight*>* point_light_list_;
 	std::vector<SpotLight*>* spot_light_list_;
-	PointLight* selected_point_light_;
-	SpotLight* selected_spot_light_;
-	// DirectionalLight* selected_directional_light_;
+	PointLight* selected_point_light_ = nullptr;
+	SpotLight* selected_spot_light_ = nullptr;
+	DirectionalLight* selected_directional_light_ = nullptr;
 
 	Skybox* skybox_;
 

@@ -51,6 +51,9 @@ UIManager::UIManager() {
     spot_light_dir_x_live_var_ = 0.0f;
 	spot_light_dir_y_live_var_ = 0.0f;
 	spot_light_dir_z_live_var_ = 0.0f;
+	directional_light_dir_x_live_var_ = 0.0f;
+	directional_light_dir_y_live_var_ = 0.0f;
+	directional_light_dir_z_live_var_ = -1.0f;
     for (int i = 0; i < 16; i++) {    // 4x4 rotation matrix (Column-major order)
         if (i % 5 == 0)
             rotate_matrix_live_var_[i] = 1.0f;
@@ -290,6 +293,11 @@ void UIManager::ModelTransformCB(int state) {
                                                      spot_light_dir_y_live_var_,
                                                      spot_light_dir_z_live_var_));
 	}
+    if (state == 6 && selected_directional_light_ != nullptr) {
+        selected_directional_light_->SetDirection(glm::vec3(directional_light_dir_x_live_var_,
+                                                         directional_light_dir_y_live_var_,
+			                                             directional_light_dir_z_live_var_));
+    }
 }
 
 // Static callback wrappers
@@ -358,7 +366,7 @@ void UIManager::InitGLUI(const int& render_window, const int& screenWidth) {
     glui_->add_column(true);
 
 	GLUI_Panel* light_panel = glui_->add_panel("Lights");
-    glui_->add_button_to_panel(light_panel, "On/Off", 4, LightOnOffButtonCB_Static);
+    glui_->add_button_to_panel(light_panel, "Show/Not Show", 4, LightOnOffButtonCB_Static);
 	// Point Light Controls
     point_light_list_box_ = glui_->add_listbox_to_panel(light_panel, "Point Light", nullptr, 4, ChooseModelCB_Static);
     point_light_xy_translator_ = glui_->add_translation_to_panel(light_panel, "Translation XY", GLUI_TRANSLATION_XY, point_light_translate_xy_live_var_, 4, ModelTransformCB_Static);
@@ -378,6 +386,16 @@ void UIManager::InitGLUI(const int& render_window, const int& screenWidth) {
     spot_light_dir_y_spinner_->set_float_limits(-1.0f, 1.0f); spot_light_dir_y_spinner_->set_speed(0.1f);
     spot_light_dir_z_spinner_ = glui_->add_spinner_to_panel(light_panel, "Spot Light Dir Z", GLUI_SPINNER_FLOAT, &spot_light_dir_z_live_var_, 5, ModelTransformCB_Static);
     spot_light_dir_z_spinner_->set_float_limits(-1.0f, 1.0f); spot_light_dir_z_spinner_->set_speed(0.1f);
+	glui_->add_separator_to_panel(light_panel);
+    // Directional Light Controls
+	glui_->add_statictext_to_panel(light_panel, "Directional Light Direction");
+    directional_light_dir_x_spinner_ = glui_->add_spinner_to_panel(light_panel, "X", GLUI_SPINNER_FLOAT, &directional_light_dir_x_live_var_, 6, ModelTransformCB_Static);
+    directional_light_dir_x_spinner_->set_float_limits(-1.0f, 1.0f); directional_light_dir_x_spinner_->set_speed(0.1f);
+    directional_light_dir_y_spinner_ = glui_->add_spinner_to_panel(light_panel, "Y", GLUI_SPINNER_FLOAT, &directional_light_dir_y_live_var_, 6, ModelTransformCB_Static);
+    directional_light_dir_y_spinner_->set_float_limits(-1.0f, 1.0f); directional_light_dir_y_spinner_->set_speed(0.1f);
+    directional_light_dir_z_spinner_ = glui_->add_spinner_to_panel(light_panel, "Z", GLUI_SPINNER_FLOAT, &directional_light_dir_z_live_var_, 6, ModelTransformCB_Static);
+    directional_light_dir_z_spinner_->set_float_limits(-1.0f, 1.0f); directional_light_dir_z_spinner_->set_speed(0.1f);
+
 
 	render_window_ = render_window;
     glui_->set_main_gfx_window(render_window);

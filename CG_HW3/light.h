@@ -130,6 +130,8 @@ public:
 
 	glm::vec3 GetDirection() const { return direction; }
 	glm::vec3 GetRadiance()  const { return radiance;  }
+	void SetDirection(const glm::vec3 dir) { direction = glm::normalize(dir); }
+	void SetRadiance(const glm::vec3 L) { radiance = L; }
 
 private:
 	// DirectionalLight Private Data.

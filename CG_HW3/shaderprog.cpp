@@ -226,7 +226,7 @@ void GBufferShaderProg::GetUniformVariableLocation() {
     locP_ = glGetUniformLocation(shaderProgId, "projectionMatrix");
 	locNM_ = glGetUniformLocation(shaderProgId, "normalMatrix");
 	locTexDiffuse_ = glGetUniformLocation(shaderProgId, "texture_diffuse1");
-	locKs_ = glGetUniformLocation(shaderProgId, "texture_specular1");
+	locKs_ = glGetUniformLocation(shaderProgId, "Ks");
 }
 
 GBufferShaderProg::~GBufferShaderProg()
@@ -282,3 +282,81 @@ void LightPassShaderProg::GetUniformVariableLocation()
     ShaderProg::GetUniformVariableLocation();
 }
 // ------------------------------------------------------------------------------------------------
+RSMBufferShaderProg::RSMBufferShaderProg()
+{
+    locM_ = -1;
+    locV_ = -1;
+    locLightVP_ = -1;
+	locLightIntensity_ = -1;
+    locNM_ = -1;
+    locTexDiffuse_ = -1;
+    locKs_ = -1;
+}
+RSMBufferShaderProg::~RSMBufferShaderProg()
+{
+}
+void RSMBufferShaderProg::GetUniformVariableLocation()
+{
+    ShaderProg::GetUniformVariableLocation();
+    locM_ = glGetUniformLocation(shaderProgId, "worldMatrix");
+    locV_ = glGetUniformLocation(shaderProgId, "viewMatrix");
+    locNM_ = glGetUniformLocation(shaderProgId, "normalMatrix");
+	locLightVP_ = glGetUniformLocation(shaderProgId, "lightViewVP");
+	locLightIntensity_ = glGetUniformLocation(shaderProgId, "lightIntensity");
+    locTexDiffuse_ = glGetUniformLocation(shaderProgId, "texture_diffuse");
+    locKs_ = glGetUniformLocation(shaderProgId, "Ks");
+}
+
+RSMShadingShaderProg::RSMShadingShaderProg()
+{
+    locV_ = -1;
+    locP_ = -1;
+    locAlbedoTexture_ = -1;
+    locNormalTexture_ = -1;
+    locPositionTexture_ = -1;
+    locRSMFluxTexture_ = -1;
+    locRSMNormalTexture_ = -1;
+    locRSMPositionTexture_ = -1;
+    locLightVPMatrixMulInverseCameraViewMatrix_ = -1;
+    locMaxSampleRadius_ = -1;
+    locRSMSize_ = -1;
+    locVPLNum_ = -1;
+
+	locLightNum_ = -1;
+	locLightType_ = -1;
+	locLightIntensity_ = -1;
+	locLightPosInViewSpace_ = -1;
+	locLightDirInViewSpace_ = -1;
+	locSpotCutoff_ = -1;
+	locSpotTotalWidth_ = -1;
+}
+RSMShadingShaderProg::~RSMShadingShaderProg()
+{
+}
+
+void RSMShadingShaderProg::GetUniformVariableLocation()
+{
+    ShaderProg::GetUniformVariableLocation();
+	locV_ = glGetUniformLocation(shaderProgId, "ViewMatrix");
+	locP_ = glGetUniformLocation(shaderProgId, "ProjectionMatrix");
+	locAlbedoTexture_ = glGetUniformLocation(shaderProgId, "u_AlbedoTexture");
+	locNormalTexture_ = glGetUniformLocation(shaderProgId, "u_NormalTexture");
+	locPositionTexture_ = glGetUniformLocation(shaderProgId, "u_PositionTexture");
+	locRSMFluxTexture_ = glGetUniformLocation(shaderProgId, "u_RSMFluxTexture");
+	locRSMNormalTexture_ = glGetUniformLocation(shaderProgId, "u_RSMNormalTexture");
+	locRSMPositionTexture_ = glGetUniformLocation(shaderProgId, "u_RSMPositionTexture");
+	locLightVPMatrixMulInverseCameraViewMatrix_ = glGetUniformLocation(shaderProgId, "u_LightVPMatrixMulInverseCameraViewMatrix");
+	locMaxSampleRadius_ = glGetUniformLocation(shaderProgId, "u_MaxSampleRadius");
+	locRSMSize_ = glGetUniformLocation(shaderProgId, "u_RSMSize");
+	locVPLNum_ = glGetUniformLocation(shaderProgId, "u_VPLNum");
+
+	// Light properties.
+	locLightNum_ = glGetUniformLocation(shaderProgId, "u_LightNum");
+	locLightType_ = glGetUniformLocation(shaderProgId, "u_LightType");
+	locLightIntensity_ = glGetUniformLocation(shaderProgId, "u_LightIntensity");
+	locLightPosInViewSpace_ = glGetUniformLocation(shaderProgId, "u_LightPosInViewSpace");
+	locLightDirInViewSpace_ = glGetUniformLocation(shaderProgId, "u_LightDirInViewSpace");
+	locSpotCutoff_ = glGetUniformLocation(shaderProgId, "u_SpotCosCutoff");
+	locSpotTotalWidth_ = glGetUniformLocation(shaderProgId, "u_SpotCosTotalWidth");
+
+}
