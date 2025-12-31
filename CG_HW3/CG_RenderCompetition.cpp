@@ -33,7 +33,7 @@ float spotLightCutoffStartInDegree = 30.0f;
 float spotLightTotalWidthInDegree = 45.0f;
 glm::vec3 ambientLight = glm::vec3(0.2f, 0.2f, 0.2f);
 const int POINT_LIGHT_NUM = 1;
-const int SPOT_LIGHT_NUM = 3;
+const int SPOT_LIGHT_NUM = 4;
 std::vector<PointLight*> point_light_list(POINT_LIGHT_NUM);
 std::vector<SpotLight*> spot_light_list(SPOT_LIGHT_NUM);
 // Camera.
@@ -500,7 +500,7 @@ void RenderWithRSM() {
         glm::mat4x4 lightViewMatrix = glm::lookAt(spot_light_list[i]->GetPosition(),
             spot_light_list[i]->GetPosition() + spot_light_list[i]->GetDirection(),
 			glm::vec3(0.0f, 0.0f, 1.0f)); // Maybe need to be changed.
-        glm::mat4x4 lightProjectionMatrix = glm::perspective(glm::radians(spot_light_list[i]->GetTotalWidth()), 1.0f, 0.1f, 1000.0f);
+        glm::mat4x4 lightProjectionMatrix = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 1000.0f);
 
         glBindFramebuffer(GL_FRAMEBUFFER, rsm_buffer->GetRSMBuffer());
         glViewport(0, 0, rsm_buffer->GetRSMSize(), rsm_buffer->GetRSMSize());
@@ -829,6 +829,7 @@ void CreateLights()
     spot_light_list[2] = spotLight;
     spotLight = new SpotLight(spotLightPosition, glm::vec3(0.74218, 0.46875, 0.9), spotLightDirection,
         spotLightCutoffStartInDegree, spotLightTotalWidthInDegree);
+    spot_light_list[3] = spotLight;
 }
 
 void CreateCamera()

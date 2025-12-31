@@ -63,7 +63,7 @@ void main()
 
 	bool outLightSpace = FragPosInLightSpace.z < -1.0f || FragPosInLightSpace.x > 1.0f || FragPosInLightSpace.y > 1.0f || FragPosInLightSpace.x < -1.0f || FragPosInLightSpace.y < -1.0f;
     vec3 RSMPos = texture(u_RSMPositionTexture, FragNDCPos4Light).xyz;
-    bool inShadow = length(FragViewPos - RSMPos) > 0.1; // Bias 0.1, because RSM pos is interpolated
+    bool inShadow = length(FragViewPos - RSMPos) > 0.1f; // Bias 0.1, because RSM pos is interpolated
 
     if (outLightSpace || inShadow)
     {
@@ -89,10 +89,10 @@ void main()
         // Spot Light
         if (u_LightType == 1) 
         {
-            float cosA = dot(-u_LightDirInViewSpace, lightDir);  // A, T, F explained in the PPT.
+            float cosA = dot(-normalize(u_LightDirInViewSpace), lightDir);  // A, T, F explained in the PPT.
             float cosF = cos(radians(u_SpotCosCutoff));
             float cosT = cos(radians(u_SpotCosTotalWidth));
-            attenuation *= 0.5f * min(1.0f, max(0.0f, (cosA - cosT) / (cosF - cosT)));
+            attenuation *= min(1.0f, max(0.0f, (cosA - cosT) / (cosF - cosT)));
         }
 
         DirectIllumination = attenuation * (Diffuse(FragAlbedo, u_LightIntensity, FragViewNormal, lightDir) + 
@@ -109,7 +109,7 @@ void main()
         float r = sqrt(float(i) + 0.5f) / sqrt(float(u_VPLNum));
         float theta = i * goldenAngle;
         vec2 offset = vec2(cos(theta), sin(theta)) * r;
-        float weight = 32.0f; 
+        float weight = 2.0f; 
 
 		vec2 VPLSamplePos = FragNDCPos4Light + u_MaxSampleRadius * offset * RSMTexelSize;
 		vec3 VPLFlux = texture(u_RSMFluxTexture, VPLSamplePos).xyz;
