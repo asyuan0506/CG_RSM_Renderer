@@ -10,3 +10,5 @@ This renderer is designed specifically for .obj files and utilizes a Deferred Sh
 * **Interactive UI:** Integrates GLUI to offer real-time control over model loading/deletion, model transformations, and light settings.
 * **Complex Scene Support:** Capable of rendering multiple 3D models and evaluating point, directional, spot lights simultaneously.
 * **Spherical Skybox:** UV-mapped 3D sphere environment background.
+[!image](WithRSM.png "Scene With RSM")
+[!image](WithoutRSM.png "Scene Without RSM")
